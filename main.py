@@ -195,22 +195,45 @@ async def check_registration(wallet_address: str):
     Check if a device with the given wallet_address is registered in Supabase Devices table
     """
     try:
-        url = f"{SUPABASE_URL}/rest/v1/Devices"
-        headers = {
-            "apikey": SUPABASE_KEY,
-            "Authorization": f"Bearer {SUPABASE_KEY}",
-            "Content-Type": "application/json",
-        }
-        params = {
-            "wallet_address": f"eq.{wallet_address}",
-            "select": "wallet_address"
-        }
+        # Try both table name variations (case-sensitive)
+        table_names = ["Devices", "devices"]
+        data = []
         
-        response = requests.get(url, headers=headers, params=params, timeout=10)
-        response.raise_for_status()
+        for table_name in table_names:
+            url = f"{SUPABASE_URL}/rest/v1/{table_name}"
+            headers = {
+                "apikey": SUPABASE_KEY,
+                "Authorization": f"Bearer {SUPABASE_KEY}",
+                "Content-Type": "application/json",
+            }
+            params = {
+                "wallet_address": f"eq.{wallet_address}",
+                "select": "wallet_address"
+            }
+            
+            try:
+                response = requests.get(url, headers=headers, params=params, timeout=10)
+                response.raise_for_status()
+                data = response.json()
+                if data:  # If we got results, use this table name
+                    break
+            except requests.exceptions.HTTPError as e:
+                if e.response.status_code == 404:
+                    # Table not found, try next variation
+                    continue
+                else:
+                    raise
         
-        data = response.json()
         is_registered = len(data) > 0
+        
+        # Debug logging
+        print(f"🔍 Check registration for {wallet_address}:")
+        print(f"   Supabase response: {len(data)} record(s) found")
+        print(f"   Registered: {is_registered}")
+        if data:
+            print(f"   Data: {data}")
+        elif not data:
+            print(f"   ⚠️  No device found with wallet_address: {wallet_address}")
         
         return JSONResponse(
             status_code=200,
@@ -220,6 +243,7 @@ async def check_registration(wallet_address: str):
             }
         )
     except requests.exceptions.RequestException as e:
+        print(f"❌ Registration check error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Registration check failed: {str(e)}")
 
 

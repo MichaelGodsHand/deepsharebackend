@@ -122,6 +122,10 @@ def store_in_supabase(wallet_address: str, image_cid: str, metadata_cid: str):
     Store wallet_address, image_cid, and metadata_cid in Supabase images table using REST API
     """
     try:
+        # Normalize wallet address to lowercase for consistency
+        # (Ethereum addresses are case-insensitive, but Supabase string comparison is case-sensitive)
+        wallet_address_lower = wallet_address.lower()
+        
         # Try both lowercase and quoted table name (Supabase can be case-sensitive)
         url = f"{SUPABASE_URL}/rest/v1/images"
         headers = {
@@ -131,7 +135,7 @@ def store_in_supabase(wallet_address: str, image_cid: str, metadata_cid: str):
             "Prefer": "return=representation"
         }
         data = {
-            "wallet_address": wallet_address,
+            "wallet_address": wallet_address_lower,
             "image_cid": image_cid,
             "metadata_cid": metadata_cid
         }
@@ -195,6 +199,10 @@ async def check_registration(wallet_address: str):
     Check if a device with the given wallet_address is registered in Supabase Devices table
     """
     try:
+        # Normalize wallet address to lowercase for case-insensitive comparison
+        # (Ethereum addresses are case-insensitive, but Supabase string comparison is case-sensitive)
+        wallet_address_lower = wallet_address.lower()
+        
         # Try both table name variations (case-sensitive)
         table_names = ["Devices", "devices"]
         data = []
@@ -207,7 +215,7 @@ async def check_registration(wallet_address: str):
                 "Content-Type": "application/json",
             }
             params = {
-                "wallet_address": f"eq.{wallet_address}",
+                "wallet_address": f"eq.{wallet_address_lower}",
                 "select": "wallet_address"
             }
             
@@ -227,13 +235,13 @@ async def check_registration(wallet_address: str):
         is_registered = len(data) > 0
         
         # Debug logging
-        print(f"🔍 Check registration for {wallet_address}:")
+        print(f"🔍 Check registration for {wallet_address} (normalized: {wallet_address_lower}):")
         print(f"   Supabase response: {len(data)} record(s) found")
         print(f"   Registered: {is_registered}")
         if data:
             print(f"   Data: {data}")
         elif not data:
-            print(f"   ⚠️  No device found with wallet_address: {wallet_address}")
+            print(f"   ⚠️  No device found with wallet_address: {wallet_address_lower}")
         
         return JSONResponse(
             status_code=200,

@@ -12,7 +12,7 @@ load_dotenv()
 
 app = FastAPI(title="Deepshare IPFS Service")
 
-# CORS middleware
+# CORS middlewares
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # In production, specify your frontend URL
